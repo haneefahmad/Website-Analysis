@@ -15,11 +15,12 @@ from models import FullAuditResponse
 from workers.network_scanner import scan_network_and_security
 from workers.dom_seo_scanner import scan_dom_and_seo
 from workers.saudi_scanner import scan_saudi_conversion
-from workers.mobile_browser import scan_headless_mobile
+from workers.mobile_browser import scan_headless_devices, scan_headless_mobile
 from workers.external_intel import scan_external_intel
 from workers.aeo_scanner import scan_aeo_and_geo
 from services.scoring_engine import calculate_audit_scores
 from services.ai_pitch_engine import generate_ai_pitch
+from services.metrics_evaluator import evaluate_all_metrics
 
 app = FastAPI(title="Website Analysis & Lead Gen Engine", version="1.0.0")
 
@@ -70,22 +71,24 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
             pass
 
         # 2. Parallel Workers Definition
-        # Launch mobile browser and network concurrently first
-        yield f"data: {json.dumps({'event': 'worker_start', 'worker': 'mobile', 'message': 'Launching Headless Mobile Browser & Layout Analysis...'})}\n\n"
+        # Launch mobile and desktop browser concurrently with network and external intel
+        yield f"data: {json.dumps({'event': 'worker_start', 'worker': 'mobile', 'message': 'Launching Headless Mobile Browser (iPhone 14)...'})}\n\n"
+        yield f"data: {json.dumps({'event': 'worker_start', 'worker': 'desktop', 'message': 'Launching Headless Desktop Browser (1440px)...'})}\n\n"
         
-        mobile_task = asyncio.create_task(scan_headless_mobile(target_url, audit_id, settings.SCREENSHOTS_DIR))
+        devices_task = asyncio.create_task(scan_headless_devices(target_url, audit_id, settings.SCREENSHOTS_DIR))
         network_task = asyncio.create_task(scan_network_and_security(target_url))
-        external_task = asyncio.create_task(scan_external_intel(target_url, settings.PAGESPEED_API_KEY, settings.GOOGLE_PLACES_API_KEY))
+        external_task = asyncio.create_task(scan_external_intel(target_url, settings.PAGESPEED_API_KEY))
 
-        # Await mobile and network
-        mobile_res = await mobile_task
-        yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'mobile', 'message': 'Mobile viewport and layout completed'})}\n\n"
+        # Await devices and network
+        mobile_res, desktop_res = await devices_task
+        yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'mobile', 'message': 'Mobile viewport (390px) completed'})}\n\n"
+        yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'desktop', 'message': 'Desktop viewport (1440px) completed'})}\n\n"
 
         net_res = await network_task
         yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'network', 'message': 'Network & protocol completed'})}\n\n"
 
         # Now pass both raw HTML and Playwright rendered HTML to DOM, Saudi, and AEO scanners
-        rendered_html = mobile_res.rendered_html or ""
+        rendered_html = mobile_res.rendered_html or desktop_res.rendered_html or ""
 
         dom_task = asyncio.create_task(scan_dom_and_seo(target_url, html_content, rendered_html))
         saudi_task = asyncio.create_task(scan_saudi_conversion(target_url, html_content, rendered_html))
@@ -108,6 +111,7 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
             "dom_seo": dom_res,
             "saudi": saudi_res,
             "mobile": mobile_res,
+            "desktop": desktop_res,
             "external": ext_res,
             "aeo_geo": aeo_res
         }
@@ -121,8 +125,7 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
         score_data = calculate_audit_scores(all_issues)
 
         # 4. AI Pitch & Vision Engine
-        mobile_res = worker_results.get("mobile")
-        fold_path = mobile_res.fold_screenshot_path if mobile_res else None
+        fold_path = mobile_res.fold_screenshot_path or desktop_res.fold_screenshot_path
         
         yield f"data: {json.dumps({'event': 'ai_pitch_start', 'message': 'Generating bilingual sales outreach pitches...'})}\n\n"
         
@@ -133,12 +136,28 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
             gemini_api_key=settings.GEMINI_API_KEY
         )
 
-        # 5. Build Final Response Object
+        # 5. Evaluate Complete Checklist of All Metrics & Concrete Solutions
+        evaluated_metrics = evaluate_all_metrics(
+            target_url=target_url,
+            network=worker_results["network"],
+            dom=worker_results["dom_seo"],
+            saudi=worker_results["saudi"],
+            mobile=worker_results["mobile"],
+            external=worker_results["external"],
+            aeo=worker_results["aeo_geo"],
+            desktop=worker_results["desktop"]
+        )
+
+        # 6. Build Final Response Object
         final_response = FullAuditResponse(
             audit_id=audit_id,
             target_url=target_url,
             overall_score=score_data["overall_score"],
             scores_by_category=score_data["scores_by_category"],
+            mobile_overall_score=score_data.get("mobile_overall_score", score_data["overall_score"]),
+            desktop_overall_score=score_data.get("desktop_overall_score", score_data["overall_score"]),
+            mobile_scores_by_category=score_data.get("mobile_scores_by_category", score_data["scores_by_category"]),
+            desktop_scores_by_category=score_data.get("desktop_scores_by_category", score_data["scores_by_category"]),
             total_critical_issues=score_data["critical_count"],
             total_warning_issues=score_data["warning_count"],
             total_info_issues=score_data["info_count"],
@@ -146,10 +165,12 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
             dom_seo=worker_results.get("dom_seo"),
             saudi_conversion=worker_results.get("saudi"),
             mobile=worker_results.get("mobile"),
+            desktop=worker_results.get("desktop"),
             external=worker_results.get("external"),
             aeo_geo=worker_results.get("aeo_geo"),
             ai_pitch=ai_pitch,
-            all_issues=all_issues
+            all_issues=all_issues,
+            evaluated_metrics=evaluated_metrics
         )
 
         # Save into SQLite

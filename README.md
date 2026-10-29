@@ -65,4 +65,3 @@ cp backend/.env.example backend/.env
 ```
 * `GEMINI_API_KEY`: For automated Gemini Vision screenshot reviews (Get free key at [Google AI Studio](https://aistudio.google.com)).
 * `PAGESPEED_API_KEY`: Optional key for higher PageSpeed quota (Google developer console).
-* `GOOGLE_PLACES_API_KEY`: For Google Business Profile star rating and review count.

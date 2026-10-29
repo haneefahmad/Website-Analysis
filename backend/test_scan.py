@@ -3,7 +3,7 @@ import json
 from workers.network_scanner import scan_network_and_security
 from workers.dom_seo_scanner import scan_dom_and_seo
 from workers.saudi_scanner import scan_saudi_conversion
-from workers.mobile_browser import scan_headless_mobile
+from workers.mobile_browser import scan_headless_devices, scan_headless_mobile
 from workers.aeo_scanner import scan_aeo_and_geo
 from services.scoring_engine import calculate_audit_scores
 from services.ai_pitch_engine import generate_ai_pitch
@@ -32,15 +32,18 @@ async def main():
     aeo = await scan_aeo_and_geo(target, "<html><body>Example Domain</body></html>")
     print(f"  AI Bots Checked: {len(aeo.ai_bots_permissions)}, Blocked: {aeo.ai_bots_blocked}, Schema: {aeo.has_localbusiness_schema}")
 
-    # Run Headless Mobile
-    print("Running Worker 4 (Playwright Mobile Headless)...")
-    mobile = await scan_headless_mobile(target, "test-audit-123", "./screenshots")
-    print(f"  Horizontal Overflow: {mobile.horizontal_scroll_overflow}, Scroll Width: {mobile.scroll_width}px, Fold Screenshot: {mobile.fold_screenshot_path}")
+    # Run Dual Headless Browsers (Mobile & Desktop)
+    print("Running Worker 4 & 5 (Playwright Mobile & Desktop Headless)...")
+    mobile, desktop = await scan_headless_devices(target, "test-audit-123", "./screenshots")
+    print(f"  Mobile Overflow: {mobile.horizontal_scroll_overflow}, Scroll Width: {mobile.scroll_width}px, Fold: {mobile.fold_screenshot_path}")
+    print(f"  Desktop Overflow: {desktop.horizontal_scroll_overflow}, Scroll Width: {desktop.scroll_width}px, Fold: {desktop.fold_screenshot_path}")
 
     # Aggregate Scoring
-    all_issues = net.issues + dom.issues + saudi.issues + mobile.issues + aeo.issues
+    all_issues = net.issues + dom.issues + saudi.issues + mobile.issues + desktop.issues + aeo.issues
     scores = calculate_audit_scores(all_issues)
     print(f"\nFinal Overall Score: {scores['overall_score']} / 100")
+    print(f"Mobile Overall Score: {scores['mobile_overall_score']} / 100")
+    print(f"Desktop Overall Score: {scores['desktop_overall_score']} / 100")
     print(f"Critical Issues: {scores['critical_count']}, Warnings: {scores['warning_count']}, Info: {scores['info_count']}")
 
     # Pitch Generation

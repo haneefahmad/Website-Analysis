@@ -190,8 +190,10 @@ async def scan_dom_and_seo(target_url: str, html_content: str = None, rendered_h
     if "ttq." in scripts_text or "analytics.tiktok.com" in script_srcs:
         result.tiktok_pixel_detected = True
 
-    # 8. Legal Compliance Pages
+    # 8. Legal Compliance Pages & Social Profiles
     links = soup.find_all("a", href=True)
+    social_urls = []
+    social_domains = ["linkedin.com", "instagram.com", "facebook.com", "x.com", "twitter.com", "youtube.com", "pinterest.com", "threads.net", "tiktok.com"]
     for a in links:
         href_lower = a["href"].lower()
         text_lower = a.get_text().lower()
@@ -199,7 +201,34 @@ async def scan_dom_and_seo(target_url: str, html_content: str = None, rendered_h
             result.privacy_policy_found = True
         if any(w in href_lower or w in text_lower for w in ["terms", "conditions", "شروط"]):
             result.terms_found = True
+        if any(s in href_lower for s in social_domains):
+            if a["href"] not in social_urls:
+                social_urls.append(a["href"])
+    result.social_profiles = social_urls
 
+    # 9. Page Assets & Tech Stack Fingerprinting
+    result.page_size_kb = round(len(full_html.encode('utf-8')) / 1024, 1)
+    result.scripts_count = len(soup.find_all("script"))
+    result.stylesheets_count = len(soup.find_all("link", rel=re.compile(r"stylesheet", re.I)))
+
+    detected_tech = []
+    if "_next/" in full_html or "__next" in full_html:
+        detected_tech.append("Next.js")
+    if "react" in full_html.lower() or "data-reactroot" in full_html or "_next/" in full_html:
+        detected_tech.append("React")
+    if "wp-content" in full_html or "wordpress" in full_html.lower():
+        detected_tech.append("WordPress")
+    if "shopify" in full_html.lower():
+        detected_tech.append("Shopify")
+    if "tailwind" in full_html.lower():
+        detected_tech.append("Tailwind CSS")
+    if result.gtm_detected:
+        detected_tech.append("Google Tag Manager")
+    if result.ga4_detected:
+        detected_tech.append("Google Analytics 4")
+    result.tech_stack = detected_tech
+
+    # 10. Privacy Policy Check
     if not result.privacy_policy_found:
         result.issues.append(AuditIssue(
             category="Compliance",

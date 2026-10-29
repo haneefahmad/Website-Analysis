@@ -8,6 +8,24 @@ class Severity(str, Enum):
     WARNING = "warning"    # 🟡
     INFO = "info"          # 🟢
 
+class MetricStatus(str, Enum):
+    PASSED = "passed"
+    WARNING = "warning"
+    FAILED = "failed"
+
+class MetricEvaluation(BaseModel):
+    id: str
+    name: str
+    category: str
+    status: MetricStatus
+    score: int
+    current_value: str
+    benchmark: str
+    flaw_explanation: Optional[str] = None
+    solution: str
+    code_snippet: Optional[str] = None
+    device: Optional[str] = "all"  # "all", "mobile", or "desktop"
+
 class AuditIssue(BaseModel):
     category: str
     item_number: int
@@ -56,6 +74,11 @@ class DOMSEOResult(BaseModel):
     privacy_policy_found: bool = False
     terms_found: bool = False
     cookie_banner_found: bool = False
+    page_size_kb: Optional[float] = None
+    scripts_count: int = 0
+    stylesheets_count: int = 0
+    tech_stack: List[str] = []
+    social_profiles: List[str] = []
     issues: List[AuditIssue] = []
 
 class SaudiConversionResult(BaseModel):
@@ -91,15 +114,50 @@ class HeadlessMobileResult(BaseModel):
     rendered_html: Optional[str] = None
     issues: List[AuditIssue] = []
 
+class HeadlessDesktopResult(BaseModel):
+    horizontal_scroll_overflow: bool = False
+    viewport_width: int = 1440
+    viewport_height: int = 900
+    scroll_width: int = 1440
+    overflow_elements: List[str] = []
+    fold_screenshot_path: Optional[str] = None
+    full_screenshot_path: Optional[str] = None
+    local_fcp_ms: Optional[int] = None
+    local_load_time_ms: Optional[int] = None
+    local_dom_interactive_ms: Optional[int] = None
+    rendered_html: Optional[str] = None
+    issues: List[AuditIssue] = []
+
 class ExternalIntelResult(BaseModel):
-    mobile_performance_score: Optional[int] = None  # 0 - 100
+    # Mobile Lighthouse Scores (0 - 100)
+    mobile_performance_score: Optional[int] = None
+    mobile_accessibility_score: Optional[int] = None
+    mobile_best_practices_score: Optional[int] = None
+    mobile_seo_score: Optional[int] = None
+
+    # Mobile Core Web Vitals
+    mobile_fcp_seconds: Optional[float] = None
+    mobile_speed_index_seconds: Optional[float] = None
+    mobile_tbt_ms: Optional[float] = None
     lcp_seconds: Optional[float] = None
     cls_score: Optional[float] = None
     inp_ms: Optional[float] = None
     image_savings_mb: Optional[float] = None
-    gbp_claimed: Optional[bool] = None
-    gbp_rating: Optional[float] = None
-    gbp_reviews_count: Optional[int] = None
+
+    # Desktop Lighthouse Scores (0 - 100)
+    desktop_performance_score: Optional[int] = None
+    desktop_accessibility_score: Optional[int] = None
+    desktop_best_practices_score: Optional[int] = None
+    desktop_seo_score: Optional[int] = None
+
+    # Desktop Core Web Vitals
+    desktop_fcp_seconds: Optional[float] = None
+    desktop_speed_index_seconds: Optional[float] = None
+    desktop_tbt_ms: Optional[float] = None
+    desktop_lcp_seconds: Optional[float] = None
+    desktop_cls_score: Optional[float] = None
+    desktop_inp_ms: Optional[float] = None
+
     issues: List[AuditIssue] = []
 
 class AEOGEOResult(BaseModel):
@@ -128,6 +186,10 @@ class FullAuditResponse(BaseModel):
     scanned_at: datetime = Field(default_factory=datetime.utcnow)
     overall_score: int = 0
     scores_by_category: Dict[str, int] = {}
+    mobile_overall_score: Optional[int] = None
+    desktop_overall_score: Optional[int] = None
+    mobile_scores_by_category: Dict[str, int] = {}
+    desktop_scores_by_category: Dict[str, int] = {}
     total_critical_issues: int = 0
     total_warning_issues: int = 0
     total_info_issues: int = 0
@@ -135,7 +197,9 @@ class FullAuditResponse(BaseModel):
     dom_seo: Optional[DOMSEOResult] = None
     saudi_conversion: Optional[SaudiConversionResult] = None
     mobile: Optional[HeadlessMobileResult] = None
+    desktop: Optional[HeadlessDesktopResult] = None
     external: Optional[ExternalIntelResult] = None
     aeo_geo: Optional[AEOGEOResult] = None
     ai_pitch: Optional[AIPitchResult] = None
     all_issues: List[AuditIssue] = []
+    evaluated_metrics: List[MetricEvaluation] = []

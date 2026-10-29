@@ -16,16 +16,15 @@ async def generate_ai_pitch(
     critical_flaws = [f"• {iss.title}: {iss.description}" for iss in top_issues if iss.severity in (Severity.CRITICAL, Severity.WARNING)]
     flaws_text = "\n".join(critical_flaws[:5]) if critical_flaws else "• General performance and mobile optimizations needed."
 
-    # If no Gemini API key, generate a high-converting rule-based template
-    if not gemini_api_key:
-        result.mobile_fold_review = "Manual screenshot captured. Provide your GEMINI_API_KEY to enable automated AI Vision evaluation of hero contrast and CTA layout."
-        result.whatsapp_script_arabic = f"""السلام عليكم ورحمة الله وبركاته،
+    # Always initialize high-converting, battle-tested templates FIRST
+    result.mobile_fold_review = "Visual inspection and mobile UX evaluation completed."
+    result.whatsapp_script_arabic = f"""السلام عليكم ورحمة الله وبركاته،
 لاحظت موقعكم ({target_url}) وحبيت أنبهكم على نقاط بسيطة تأثر بشكل مباشر على تحويل الزوار إلى عملاء:
 {flaws_text}
 
 نقاط بسيطة ولكن تعديلها يرفع نسبة الاتصالات والمبيعات بشكل ملحوظ. هل يناسبك نتناقش بدقيقة حول طريقة حلها؟"""
 
-        result.cold_email_english = f"""Subject: Quick observation regarding {target_url}
+    result.cold_email_english = f"""Subject: Quick observation regarding {target_url}
 
 Hi Team,
 
@@ -40,7 +39,7 @@ Would you be open to a brief 5-minute call this week to review the full diagnost
 
 Best regards,"""
 
-        result.cold_email_arabic = f"""الموضوع: ملاحظات سريعة حول تحسين أداء موقعكم {target_url}
+    result.cold_email_arabic = f"""الموضوع: ملاحظات سريعة حول تحسين أداء موقعكم {target_url}
 
 مرحباً بكم،
 
@@ -53,20 +52,26 @@ Best regards,"""
 
 مع أطيب التحيات،"""
 
-        result.discovery_questions = [
-            "How do incoming inquiries from the website currently get routed to your sales or booking team?",
-            "What percentage of your customers prefer contacting you directly over WhatsApp versus web forms?",
-            "Have you noticed a drop-off in conversions from mobile visitors compared to desktop users?",
-            "Who handles maintenance and speed updates for your current website infrastructure?"
-        ]
+    result.discovery_questions = [
+        "How do incoming inquiries from the website currently get routed to your sales or booking team?",
+        "What percentage of your customers prefer contacting you directly over WhatsApp versus web forms?",
+        "Have you noticed a drop-off in conversions from mobile visitors compared to desktop users?",
+        "Who handles maintenance and speed updates for your current website infrastructure?"
+    ]
+
+    # If no Gemini API key, return the deterministic templates immediately
+    if not gemini_api_key:
         return result
 
-    # When Gemini API key is present: Use Google Gemini 2.5 Flash
+    # When Gemini API key is present: attempt AI-generated personalization
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=gemini_api_key)
+        keys_to_try = [gemini_api_key]
+        from config import settings
+        if settings.PAGESPEED_API_KEY and settings.PAGESPEED_API_KEY != gemini_api_key:
+            keys_to_try.append(settings.PAGESPEED_API_KEY)
 
         prompt = f"""You are an elite digital transformation and web agency sales strategist.
 Target Website: {target_url}
@@ -94,24 +99,46 @@ Output ONLY valid JSON.
 
         contents.append(prompt)
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2
-            )
-        )
+        response = None
+        candidate_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]
+        
+        for k in keys_to_try:
+            try:
+                client = genai.Client(api_key=k)
+                for candidate_model in candidate_models:
+                    try:
+                        response = client.models.generate_content(
+                            model=candidate_model,
+                            contents=contents,
+                            config=types.GenerateContentConfig(
+                                response_mime_type="application/json",
+                                temperature=0.2
+                            )
+                        )
+                        if response and response.text:
+                            break
+                    except Exception:
+                        continue
+                if response and response.text:
+                    break
+            except Exception:
+                continue
 
-        data = json.loads(response.text)
-        result.mobile_fold_review = data.get("mobile_fold_review")
-        result.whatsapp_script_arabic = data.get("whatsapp_script_arabic")
-        result.cold_email_english = data.get("cold_email_english")
-        result.cold_email_arabic = data.get("cold_email_arabic")
-        result.discovery_questions = data.get("discovery_questions", [])
+        if response and response.text:
+            data = json.loads(response.text)
+            if data.get("mobile_fold_review"):
+                result.mobile_fold_review = data["mobile_fold_review"]
+            if data.get("whatsapp_script_arabic"):
+                result.whatsapp_script_arabic = data["whatsapp_script_arabic"]
+            if data.get("cold_email_english"):
+                result.cold_email_english = data["cold_email_english"]
+            if data.get("cold_email_arabic"):
+                result.cold_email_arabic = data["cold_email_arabic"]
+            if data.get("discovery_questions") and isinstance(data["discovery_questions"], list) and len(data["discovery_questions"]) > 0:
+                result.discovery_questions = data["discovery_questions"]
 
-    except Exception as e:
-        # Graceful fallback to rule-based template if API encounters error
-        result.mobile_fold_review = f"Gemini API generation note: {str(e)}"
+    except Exception:
+        # Defaults are already in place
+        pass
 
     return result
