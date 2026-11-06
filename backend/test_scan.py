@@ -5,6 +5,7 @@ from workers.dom_seo_scanner import scan_dom_and_seo
 from workers.saudi_scanner import scan_saudi_conversion
 from workers.mobile_browser import scan_headless_devices, scan_headless_mobile
 from workers.aeo_scanner import scan_aeo_and_geo
+from workers.contact_extractor import extract_company_contacts
 from services.scoring_engine import calculate_audit_scores
 from services.ai_pitch_engine import generate_ai_pitch
 
@@ -31,6 +32,11 @@ async def main():
     print("Running Worker 6 (AEO & GEO)...")
     aeo = await scan_aeo_and_geo(target, "<html><body>Example Domain</body></html>")
     print(f"  AI Bots Checked: {len(aeo.ai_bots_permissions)}, Blocked: {aeo.ai_bots_blocked}, Schema: {aeo.has_localbusiness_schema}")
+
+    # Run Contact & Social Extractor
+    print("Running Contact & Social Media Extractor...")
+    contacts = await extract_company_contacts(target, "<html><body><a href='mailto:info@example.com'>Email</a><a href='tel:+1234567890'>Call</a><a href='https://twitter.com/example'>Twitter</a></body></html>")
+    print(f"  Emails: {contacts.emails}, Phones: {contacts.phone_numbers}, Socials: {[s.platform for s in contacts.social_profiles]}")
 
     # Run Dual Headless Browsers (Mobile & Desktop)
     print("Running Worker 4 & 5 (Playwright Mobile & Desktop Headless)...")

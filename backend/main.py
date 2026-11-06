@@ -18,6 +18,7 @@ from workers.saudi_scanner import scan_saudi_conversion
 from workers.mobile_browser import scan_headless_devices, scan_headless_mobile
 from workers.external_intel import scan_external_intel
 from workers.aeo_scanner import scan_aeo_and_geo
+from workers.contact_extractor import extract_company_contacts
 from services.scoring_engine import calculate_audit_scores
 from services.ai_pitch_engine import generate_ai_pitch
 from services.metrics_evaluator import evaluate_all_metrics
@@ -93,6 +94,7 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
         dom_task = asyncio.create_task(scan_dom_and_seo(target_url, html_content, rendered_html))
         saudi_task = asyncio.create_task(scan_saudi_conversion(target_url, html_content, rendered_html))
         aeo_task = asyncio.create_task(scan_aeo_and_geo(target_url, rendered_html or html_content))
+        contact_task = asyncio.create_task(extract_company_contacts(target_url, html_content, rendered_html))
 
         dom_res = await dom_task
         yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'dom_seo', 'message': 'DOM & SEO completed'})}\n\n"
@@ -102,6 +104,9 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
 
         aeo_res = await aeo_task
         yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'aeo_geo', 'message': 'AEO & GEO completed'})}\n\n"
+
+        contact_res = await contact_task
+        yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'contacts', 'message': 'Company contacts & social profiles extracted'})}\n\n"
 
         ext_res = await external_task
         yield f"data: {json.dumps({'event': 'worker_done', 'worker': 'external', 'message': 'External intelligence completed'})}\n\n"
@@ -170,7 +175,8 @@ async def stream_audit(url: str = Query(..., description="Target website URL")):
             aeo_geo=worker_results.get("aeo_geo"),
             ai_pitch=ai_pitch,
             all_issues=all_issues,
-            evaluated_metrics=evaluated_metrics
+            evaluated_metrics=evaluated_metrics,
+            company_contact=contact_res
         )
 
         # Save into SQLite

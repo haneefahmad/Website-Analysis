@@ -1,6 +1,7 @@
 import aiosqlite
 import json
 import os
+from urllib.parse import urlparse
 from typing import Optional, List, Dict, Any
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "audits.db")
@@ -38,6 +39,21 @@ async def save_audit(audit_id: str, target_url: str, overall_score: int, full_da
             "INSERT OR REPLACE INTO audits (id, target_url, overall_score, data_json) VALUES (?, ?, ?, ?)",
             (audit_id, target_url, overall_score, json.dumps(full_data, default=str))
         )
+        
+        # Auto-record lead in leads table if contact details found
+        contact = full_data.get("company_contact") or {}
+        emails = contact.get("emails") or []
+        phones = contact.get("phone_numbers") or contact.get("whatsapp_numbers") or []
+        if emails or phones:
+            primary_email = emails[0] if emails else None
+            primary_phone = phones[0] if phones else None
+            company = urlparse(target_url).netloc.replace("www.", "")
+            await db.execute(
+                """INSERT INTO leads (audit_id, company_name, phone, email, notes)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (audit_id, company, primary_phone, primary_email, f"Score: {overall_score}/100. Discovered via automated audit.")
+            )
+
         await db.commit()
 
 async def get_audit(audit_id: str) -> Optional[Dict[str, Any]]:

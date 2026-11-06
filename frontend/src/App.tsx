@@ -26,7 +26,18 @@ import {
   Globe, 
   Zap, 
   CheckCircle2, 
-  AlertCircle
+  AlertCircle,
+  Phone,
+  PhoneCall,
+  Share2,
+  Linkedin,
+  Twitter,
+  Instagram,
+  Facebook,
+  Youtube,
+  Github,
+  Building2,
+  Send
 } from 'lucide-react';
 
 interface MetricEvaluation {
@@ -41,6 +52,20 @@ interface MetricEvaluation {
   solution: string;
   code_snippet?: string;
   device?: 'all' | 'mobile' | 'desktop';
+}
+
+interface SocialProfile {
+  platform: string;
+  url: string;
+  handle?: string;
+}
+
+interface CompanyContactInfo {
+  emails: string[];
+  phone_numbers: string[];
+  whatsapp_numbers: string[];
+  social_profiles: SocialProfile[];
+  contact_pages: string[];
 }
 
 interface AuditIssue {
@@ -79,6 +104,7 @@ interface FullAuditData {
   };
   all_issues: AuditIssue[];
   evaluated_metrics: MetricEvaluation[];
+  company_contact?: CompanyContactInfo;
 }
 
 export function App() {
@@ -101,6 +127,7 @@ export function App() {
     desktop: 'pending',
     external: 'pending',
     aeo_geo: 'pending',
+    contacts: 'pending',
   });
   const [auditData, setAuditData] = useState<FullAuditData | null>(null);
   const [recentAudits, setRecentAudits] = useState<any[]>([]);
@@ -151,6 +178,7 @@ export function App() {
       desktop: 'running',
       external: 'running',
       aeo_geo: 'running',
+      contacts: 'running',
     });
 
     const eventSource = new EventSource(`/api/audit/stream?url=${encodeURIComponent(target)}`);
@@ -181,6 +209,30 @@ export function App() {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const getSocialPlatformMeta = (platform: string) => {
+    switch (platform.toLowerCase()) {
+      case 'linkedin':
+        return { label: 'LinkedIn', icon: Linkedin, color: 'text-[#0A66C2] bg-blue-50/80 border-blue-200 hover:bg-blue-100' };
+      case 'twitter':
+      case 'x':
+        return { label: 'X / Twitter', icon: Twitter, color: 'text-slate-900 bg-slate-100 border-slate-300 hover:bg-slate-200' };
+      case 'instagram':
+        return { label: 'Instagram', icon: Instagram, color: 'text-[#E4405F] bg-rose-50/80 border-rose-200 hover:bg-rose-100' };
+      case 'facebook':
+        return { label: 'Facebook', icon: Facebook, color: 'text-[#1877F2] bg-blue-50/80 border-blue-200 hover:bg-blue-100' };
+      case 'youtube':
+        return { label: 'YouTube', icon: Youtube, color: 'text-[#FF0000] bg-red-50/80 border-red-200 hover:bg-red-100' };
+      case 'github':
+        return { label: 'GitHub', icon: Github, color: 'text-slate-900 bg-slate-100 border-slate-300 hover:bg-slate-200' };
+      case 'whatsapp':
+        return { label: 'WhatsApp', icon: MessageSquare, color: 'text-[#25D366] bg-emerald-50/80 border-emerald-200 hover:bg-emerald-100' };
+      case 'telegram':
+        return { label: 'Telegram', icon: Send, color: 'text-[#229ED9] bg-sky-50/80 border-sky-200 hover:bg-sky-100' };
+      default:
+        return { label: platform, icon: Share2, color: 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200' };
+    }
   };
 
   const filteredMetrics = (auditData?.evaluated_metrics || []).filter((m) => {
@@ -500,17 +552,18 @@ export function App() {
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
                 Executing Dual Device Diagnostics (Mobile & Desktop)
               </span>
-              <span className="font-mono text-slate-500 font-medium">7 Workers Active</span>
+              <span className="font-mono text-slate-500 font-medium">8 Workers Active</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
               {[
-                { key: 'network', label: '1. Network & TLS Handshake' },
-                { key: 'dom_seo', label: '2. DOM & SEO Architecture' },
-                { key: 'saudi', label: '3. Conversion & Locale Links' },
-                { key: 'mobile', label: '4. Playwright Headless Mobile (390px)' },
-                { key: 'desktop', label: '5. Playwright Headless Desktop (1440px)' },
+                { key: 'network', label: '1. Network & TLS' },
+                { key: 'dom_seo', label: '2. DOM & SEO' },
+                { key: 'saudi', label: '3. Conversion & Locales' },
+                { key: 'mobile', label: '4. Mobile Viewport (390px)' },
+                { key: 'desktop', label: '5. Desktop Viewport (1440px)' },
                 { key: 'external', label: '6. Dual PageSpeed Vitals' },
-                { key: 'aeo_geo', label: '7. Generative AEO Entity Graph' },
+                { key: 'aeo_geo', label: '7. Generative AEO Graph' },
+                { key: 'contacts', label: '8. Socials, Phone & Emails' },
               ].map((w) => {
                 const status = activeWorkers[w.key];
                 return (
@@ -1304,6 +1357,221 @@ export function App() {
               </div>
             </div>
 
+            {/* Company Contact & Social Intelligence Card */}
+            {auditData.company_contact && (
+              <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
+                {/* Card Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-900">
+                          Company Contact & Social Intelligence
+                        </h3>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          Verified Footprint
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Extracted direct contact touchpoints, phone numbers, and official social media profiles for lead generation and outreach.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Quick stats pills */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                      {auditData.company_contact.emails.length} Email{auditData.company_contact.emails.length !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                      {auditData.company_contact.phone_numbers.length} Phone{auditData.company_contact.phone_numbers.length !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                      {auditData.company_contact.social_profiles.length} Social Link{auditData.company_contact.social_profiles.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3 Columns Grid: Emails | Phones | Social Profiles */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 1. Emails Column */}
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <Mail className="w-4 h-4 text-blue-600" />
+                          Email Addresses
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">
+                          {auditData.company_contact.emails.length}
+                        </span>
+                      </div>
+                      {auditData.company_contact.emails.length > 0 ? (
+                        <div className="space-y-2">
+                          {auditData.company_contact.emails.map((email, idx) => (
+                            <div key={idx} className="p-2.5 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                              <span className="font-mono text-slate-800 truncate select-all" title={email}>{email}</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(email, `email_${idx}`)}
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                                  title="Copy email"
+                                >
+                                  {copiedKey === `email_${idx}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                </button>
+                                <a
+                                  href={`mailto:${email}`}
+                                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition"
+                                  title="Open mail client"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                          No direct public email found on homepage or contact pages. Highlight this conversion gap in your sales pitch.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Phone Numbers & WhatsApp Column */}
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <Phone className="w-4 h-4 text-emerald-600" />
+                          Phone & WhatsApp
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">
+                          {auditData.company_contact.phone_numbers.length}
+                        </span>
+                      </div>
+                      {auditData.company_contact.phone_numbers.length > 0 ? (
+                        <div className="space-y-2">
+                          {auditData.company_contact.phone_numbers.map((phone, idx) => {
+                            const isWA = auditData.company_contact?.whatsapp_numbers.some(w => phone.includes(w) || w.includes(phone));
+                            const digits = phone.replace(/\D/g, '');
+                            return (
+                              <div key={idx} className="p-2.5 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {isWA && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="WhatsApp Active" />}
+                                  <span className="font-mono text-slate-800 truncate select-all">{phone}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(phone, `phone_${idx}`)}
+                                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                                    title="Copy phone"
+                                  >
+                                    {copiedKey === `phone_${idx}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <a
+                                    href={`tel:${phone}`}
+                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition"
+                                    title="Dial number"
+                                  >
+                                    <PhoneCall className="w-3.5 h-3.5" />
+                                  </a>
+                                  {isWA && (
+                                    <a
+                                      href={`https://wa.me/${digits}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 transition"
+                                      title="Open WhatsApp chat"
+                                    >
+                                      <MessageSquare className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                          No direct phone number detected on page or contact footer.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. Social Media Profiles Column */}
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <Share2 className="w-4 h-4 text-purple-600" />
+                          Social Media Profiles
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">
+                          {auditData.company_contact.social_profiles.length}
+                        </span>
+                      </div>
+                      {auditData.company_contact.social_profiles.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto pr-1">
+                          {auditData.company_contact.social_profiles.map((soc, idx) => {
+                            const meta = getSocialPlatformMeta(soc.platform);
+                            const SocIcon = meta.icon;
+                            return (
+                              <a
+                                key={idx}
+                                href={soc.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition shadow-2xs ${meta.color}`}
+                                title={soc.url}
+                              >
+                                <SocIcon className="w-3.5 h-3.5 shrink-0" />
+                                <span>{soc.handle ? `@${soc.handle}` : meta.label}</span>
+                                <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-slate-100 text-[11px] text-slate-600 leading-relaxed">
+                          No verified social media links detected in HTML or Schema markup.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Discovered Contact Pages */}
+                {auditData.company_contact.contact_pages && auditData.company_contact.contact_pages.length > 0 && (
+                  <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-blue-500" />
+                      Discovered secondary contact pages scanned:
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {auditData.company_contact.contact_pages.map((p, idx) => (
+                        <a
+                          key={idx}
+                          href={p}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline truncate max-w-[240px]"
+                        >
+                          {p.replace(/^https?:\/\/[^\/]+/, '') || p}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Modern Tab Bar */}
             <div className="border-b border-slate-200 flex items-center justify-between overflow-x-auto pb-1">
               <div className="bg-slate-200/60 p-1 rounded-2xl flex gap-1">
@@ -1792,85 +2060,149 @@ Best regards,`;
                       "Who handles maintenance and speed updates for your current website infrastructure?"
                     ];
 
+                const directWhatsAppNum = (
+                  auditData.company_contact?.whatsapp_numbers?.[0] || 
+                  auditData.company_contact?.phone_numbers?.[0] || 
+                  ''
+                ).replace(/\D/g, '');
+
+                const primaryEmail = auditData.company_contact?.emails?.[0];
+
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* WhatsApp Box */}
-                    <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
-                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                            <MessageSquare className="w-4 h-4 text-emerald-600" /> WhatsApp Direct Pitch (Arabic)
+                  <div className="space-y-4">
+                    {/* Verified Channels Quick Bar */}
+                    {auditData.company_contact && (
+                      <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-indigo-700" />
+                          <span className="font-bold text-slate-800">Verified Outreach Targets for {auditData.target_url}:</span>
+                          <span className="text-slate-600">
+                            {auditData.company_contact.emails.length > 0 ? (
+                              <strong className="text-blue-700">{auditData.company_contact.emails[0]}</strong>
+                            ) : (
+                              <span className="text-slate-400">No public email</span>
+                            )}
+                            {' · '}
+                            {directWhatsAppNum ? (
+                              <strong className="text-emerald-700">+{directWhatsAppNum}</strong>
+                            ) : (
+                              <span className="text-slate-400">No phone</span>
+                            )}
                           </span>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={`https://wa.me/?text=${encodeURIComponent(waScript)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold flex items-center gap-1 transition shadow-2xs border border-emerald-200"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              <span>Open WhatsApp</span>
-                            </a>
-                            <button
-                              onClick={() => copyToClipboard(waScript, 'wa')}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs text-slate-800 font-semibold flex items-center gap-1 transition shadow-2xs"
-                            >
-                              <Copy className="w-3 h-3 text-slate-600" />
-                              <span>{copiedKey === 'wa' ? '✓ Copied' : 'Copy'}</span>
-                            </button>
-                          </div>
                         </div>
-                        <pre className="text-xs text-slate-800 whitespace-pre-wrap font-sans bg-slate-50 p-4 rounded-2xl border border-slate-200 leading-relaxed text-right font-medium" dir="rtl">
-                          {waScript}
-                        </pre>
-                      </div>
-                    </div>
-
-                    {/* Executive Cold Email Box */}
-                    <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
-                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-blue-600" /> Executive Cold Email (English & Arabic)
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => copyToClipboard(emailArabic, 'email_ar')}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 font-semibold flex items-center gap-1 transition shadow-2xs"
-                              title="Copy Arabic translation"
-                            >
-                              <Copy className="w-3 h-3 text-slate-500" />
-                              <span>{copiedKey === 'email_ar' ? '✓ AR Copied' : 'Copy AR'}</span>
-                            </button>
-                            <button
-                              onClick={() => copyToClipboard(emailEnglish, 'email')}
-                              className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-xs text-blue-700 border border-blue-200 font-semibold flex items-center gap-1 transition shadow-2xs"
-                            >
-                              <Copy className="w-3 h-3 text-blue-600" />
-                              <span>{copiedKey === 'email' ? '✓ Copied' : 'Copy EN'}</span>
-                            </button>
+                        {auditData.company_contact.social_profiles.length > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-slate-500 font-medium">Connect on:</span>
+                            {auditData.company_contact.social_profiles.slice(0, 4).map((s, idx) => {
+                              const meta = getSocialPlatformMeta(s.platform);
+                              const Icon = meta.icon;
+                              return (
+                                <a
+                                  key={idx}
+                                  href={s.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={`p-1 rounded-lg border text-xs shadow-2xs ${meta.color}`}
+                                  title={`${meta.label}: ${s.url}`}
+                                >
+                                  <Icon className="w-3.5 h-3.5" />
+                                </a>
+                              );
+                            })}
                           </div>
-                        </div>
-                        <pre className="text-xs text-slate-800 whitespace-pre-wrap font-sans bg-slate-50 p-4 rounded-2xl border border-slate-200 leading-relaxed">
-                          {emailEnglish}
-                        </pre>
+                        )}
                       </div>
-                    </div>
+                    )}
 
-                    {/* Discovery Talking Points */}
-                    <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm md:col-span-2">
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <HelpCircle className="w-4 h-4 text-blue-600" /> Discovery Agenda Talking Points
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        {questions.map((q, idx) => (
-                          <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 leading-relaxed flex items-start gap-3">
-                            <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
-                              {idx + 1}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* WhatsApp Box */}
+                      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                              <MessageSquare className="w-4 h-4 text-emerald-600" /> WhatsApp Direct Pitch (Arabic)
                             </span>
-                            <span className="font-medium text-slate-700">{q}</span>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={directWhatsAppNum ? `https://wa.me/${directWhatsAppNum}?text=${encodeURIComponent(waScript)}` : `https://wa.me/?text=${encodeURIComponent(waScript)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold flex items-center gap-1 transition shadow-2xs border border-emerald-200"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>{directWhatsAppNum ? `Open WhatsApp (+${directWhatsAppNum})` : 'Open WhatsApp'}</span>
+                              </a>
+                              <button
+                                onClick={() => copyToClipboard(waScript, 'wa')}
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs text-slate-800 font-semibold flex items-center gap-1 transition shadow-2xs"
+                              >
+                                <Copy className="w-3 h-3 text-slate-600" />
+                                <span>{copiedKey === 'wa' ? '✓ Copied' : 'Copy'}</span>
+                              </button>
+                            </div>
                           </div>
-                        ))}
+                          <pre className="text-xs text-slate-800 whitespace-pre-wrap font-sans bg-slate-50 p-4 rounded-2xl border border-slate-200 leading-relaxed text-right font-medium" dir="rtl">
+                            {waScript}
+                          </pre>
+                        </div>
+                      </div>
+
+                      {/* Executive Cold Email Box */}
+                      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                              <Mail className="w-4 h-4 text-blue-600" /> Executive Cold Email (English & Arabic)
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {primaryEmail && (
+                                <a
+                                  href={`mailto:${primaryEmail}?subject=${encodeURIComponent(`Quick observation regarding ${auditData.target_url}`)}&body=${encodeURIComponent(emailEnglish)}`}
+                                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1 transition shadow-2xs"
+                                  title={`Send directly to ${primaryEmail}`}
+                                >
+                                  <Send className="w-3 h-3" />
+                                  <span>Send to Email</span>
+                                </a>
+                              )}
+                              <button
+                                onClick={() => copyToClipboard(emailArabic, 'email_ar')}
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 font-semibold flex items-center gap-1 transition shadow-2xs"
+                                title="Copy Arabic translation"
+                              >
+                                <Copy className="w-3 h-3 text-slate-500" />
+                                <span>{copiedKey === 'email_ar' ? '✓ AR Copied' : 'Copy AR'}</span>
+                              </button>
+                              <button
+                                onClick={() => copyToClipboard(emailEnglish, 'email')}
+                                className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-xs text-blue-700 border border-blue-200 font-semibold flex items-center gap-1 transition shadow-2xs"
+                              >
+                                <Copy className="w-3 h-3 text-blue-600" />
+                                <span>{copiedKey === 'email' ? '✓ Copied' : 'Copy EN'}</span>
+                              </button>
+                            </div>
+                          </div>
+                          <pre className="text-xs text-slate-800 whitespace-pre-wrap font-sans bg-slate-50 p-4 rounded-2xl border border-slate-200 leading-relaxed">
+                            {emailEnglish}
+                          </pre>
+                        </div>
+                      </div>
+
+                      {/* Discovery Talking Points */}
+                      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm md:col-span-2">
+                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <HelpCircle className="w-4 h-4 text-blue-600" /> Discovery Agenda Talking Points
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          {questions.map((q, idx) => (
+                            <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 leading-relaxed flex items-start gap-3">
+                              <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
+                                {idx + 1}
+                              </span>
+                              <span className="font-medium text-slate-700">{q}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>

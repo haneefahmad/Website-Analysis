@@ -26,6 +26,18 @@ class MetricEvaluation(BaseModel):
     code_snippet: Optional[str] = None
     device: Optional[str] = "all"  # "all", "mobile", or "desktop"
 
+class SocialProfile(BaseModel):
+    platform: str  # e.g., "linkedin", "twitter", "instagram", "facebook", "youtube", "tiktok", "github", "snapchat", "telegram", "threads", "pinterest", "whatsapp"
+    url: str
+    handle: Optional[str] = None
+
+class CompanyContactInfo(BaseModel):
+    emails: List[str] = []
+    phone_numbers: List[str] = []
+    whatsapp_numbers: List[str] = []
+    social_profiles: List[SocialProfile] = []
+    contact_pages: List[str] = []
+
 class AuditIssue(BaseModel):
     category: str
     item_number: int
@@ -203,3 +215,4 @@ class FullAuditResponse(BaseModel):
     ai_pitch: Optional[AIPitchResult] = None
     all_issues: List[AuditIssue] = []
     evaluated_metrics: List[MetricEvaluation] = []
+    company_contact: Optional[CompanyContactInfo] = None
